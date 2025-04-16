@@ -135,7 +135,7 @@ const TransfersManager = () => {
       setProcessingTransfer(transferId);
       setError(null);
 
-      const response = await fetch('/.netlify/functions/execute-transfer', {
+      onst response = await fetch('/api/execute-transfer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -213,7 +213,7 @@ const TransfersManager = () => {
         // Send email notification
         await sendTransferStatusEmail(id, newStatus);
       } catch (emailError) {
-        console.error('Error sending email notification:', emailError);
+        console.error('Error sending email notification:', emailErrorc);
         // Continue even if email fails
       }
 

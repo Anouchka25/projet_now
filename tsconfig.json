@@ -11,6 +11,6 @@
     "allowSyntheticDefaultImports": true,
     "rootDir": "."
   },
-  "include": ["netlify/functions/**/*.ts"],
+  "include": ["netlify/functions/**/*.ts", "api/execute-transfer.ts"],
   "exclude": ["node_modules", "src", "dist"]
 }

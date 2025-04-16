@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
 
@@ -12,37 +12,60 @@ const supabase = createClient(
 const AIRTEL_API_URL = 'https://openapi.airtel.africa';
 const SENDER_AIRTEL_NUMBER = '074186037';
 
-export default async function handler(
-  request: VercelRequest,
-  response: VercelResponse
-) {
+const handler: Handler = async (event) => {
   // Set CORS headers
-  response.setHeader('Access-Control-Allow-Origin', '*');
-  response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'application/json'
+  };
 
   // Handle preflight requests
-  if (request.method === 'OPTIONS') {
-    return response.status(204).end();
+  if (event.httpMethod === 'OPTIONS') {
+    return { 
+      statusCode: 204, 
+      headers,
+      body: '' 
+    };
   }
 
   // Verify HTTP method
-  if (request.method !== 'POST') {
-    return response.status(405).json({ 
-      error: 'Method Not Allowed',
-      message: 'Only POST requests are allowed'
-    });
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ 
+        error: 'Method Not Allowed',
+        message: 'Only POST requests are allowed'
+      })
+    };
   }
 
   try {
     // Parse request body
-    const { transfer_id } = request.body;
+    if (!event.body) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({
+          error: 'Missing request body',
+          message: 'Request body is required'
+        })
+      };
+    }
+
+    const { transfer_id } = JSON.parse(event.body);
 
     if (!transfer_id) {
-      return response.status(400).json({
-        error: 'Missing transfer_id',
-        message: 'transfer_id is required'
-      });
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({
+          error: 'Missing transfer_id',
+          message: 'transfer_id is required'
+        })
+      };
     }
 
     // Get transfer details from Supabase
@@ -56,35 +79,51 @@ export default async function handler(
       .single();
 
     if (transferError || !transfer) {
-      return response.status(404).json({
-        error: 'Transfer not found',
-        message: transferError?.message || 'Transfer not found'
-      });
+      return {
+        statusCode: 404,
+        headers,
+        body: JSON.stringify({
+          error: 'Transfer not found',
+          message: transferError?.message || 'Transfer not found'
+        })
+      };
     }
 
     // Verify transfer status
     if (transfer.status !== 'pending') {
-      return response.status(400).json({
-        error: 'Invalid transfer status',
-        message: 'Transfer must be in pending status'
-      });
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({
+          error: 'Invalid transfer status',
+          message: 'Transfer must be in pending status'
+        })
+      };
     }
 
     // Get beneficiary phone number
     const beneficiaryPhone = transfer.beneficiaries[0]?.payment_details?.phone;
     if (!beneficiaryPhone) {
-      return response.status(400).json({
-        error: 'Invalid beneficiary',
-        message: 'Beneficiary phone number not found'
-      });
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({
+          error: 'Invalid beneficiary',
+          message: 'Beneficiary phone number not found'
+        })
+      };
     }
 
     // Validate Airtel Money number format
     if (!/^0[7][4-9][0-9]{6}$/.test(beneficiaryPhone)) {
-      return response.status(400).json({
-        error: 'Invalid phone number',
-        message: 'Invalid Airtel Money number format'
-      });
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({
+          error: 'Invalid phone number',
+          message: 'Invalid Airtel Money number format'
+        })
+      };
     }
 
     try {
@@ -149,10 +188,14 @@ export default async function handler(
           console.error('Error creating notification:', notificationError);
         }
 
-        return response.status(200).json({
-          success: true,
-          message: 'Transfer completed successfully'
-        });
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            success: true,
+            message: 'Transfer completed successfully'
+          })
+        };
       } else {
         throw new Error('Transfer failed');
       }
@@ -178,9 +221,15 @@ export default async function handler(
   } catch (error) {
     console.error('Error executing transfer:', error);
 
-    return response.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'An unexpected error occurred'
-    });
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred'
+      })
+    };
   }
-}
+};
+
+export { handler };
