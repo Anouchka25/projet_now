@@ -109,9 +109,6 @@ const TransferFeesManager = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Frais (%)
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Dernière mise à jour
-              </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
@@ -146,9 +143,6 @@ const TransferFeesManager = () => {
                   ) : (
                     (fee.fee_percentage * 100).toFixed(2)
                   )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Date(fee.updated_at).toLocaleString('fr-FR')}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   {editingId === fee.id ? (

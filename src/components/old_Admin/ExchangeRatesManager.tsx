@@ -2,66 +2,60 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Edit, Check, X } from 'lucide-react';
 
-interface TransferFee {
+interface ExchangeRate {
   id: string;
-  from_country: string;
-  to_country: string;
-  payment_method: string;
-  receiving_method: string;
-  fee_percentage: number;
+  from_currency: string;
+  to_currency: string;
+  rate: number;
   updated_at: string;
 }
 
-const TransferFeesManager = () => {
-  const [fees, setFees] = useState<TransferFee[]>([]);
+const ExchangeRatesManager = () => {
+  const [rates, setRates] = useState<ExchangeRate[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchFees();
+    fetchRates();
   }, []);
 
-  const fetchFees = async () => {
+  const fetchRates = async () => {
     try {
       setError(null);
       const { data, error } = await supabase
-        .from('transfer_fees')
+        .from('exchange_rates')
         .select('*')
-        .order('from_country');
+        .order('from_currency');
 
       if (error) throw error;
-      setFees(data);
+      setRates(data);
     } catch (err) {
-      console.error('Error fetching fees:', err);
-      setError('Erreur lors du chargement des frais');
+      console.error('Error fetching rates:', err);
+      setError('Erreur lors du chargement des taux de change');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEdit = async (id: string, newFee: number) => {
+  const handleEdit = async (id: string, newRate: number) => {
     try {
       setError(null);
-      if (newFee < 0 || newFee > 100) {
-        throw new Error('Le pourcentage doit être entre 0 et 100');
-      }
-
       const { error } = await supabase
-        .from('transfer_fees')
+        .from('exchange_rates')
         .update({ 
-          fee_percentage: newFee / 100,
+          rate: newRate,
           updated_at: new Date().toISOString()
         })
         .eq('id', id);
 
       if (error) throw error;
       setEditingId(null);
-      await fetchFees();
+      await fetchRates();
     } catch (err) {
-      console.error('Error updating fee:', err);
-      setError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour des frais');
+      console.error('Error updating rate:', err);
+      setError('Erreur lors de la mise à jour du taux de change');
     }
   };
 
@@ -75,7 +69,7 @@ const TransferFeesManager = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Frais de transfert</h2>
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">Taux de change</h2>
 
       {error && (
         <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
@@ -101,13 +95,7 @@ const TransferFeesManager = () => {
                 Vers
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Moyen de paiement
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Moyen de réception
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Frais (%)
+                Taux
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Dernière mise à jour
@@ -118,43 +106,36 @@ const TransferFeesManager = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {fees.map((fee) => (
-              <tr key={fee.id}>
+            {rates.map((rate) => (
+              <tr key={rate.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {fee.from_country}
+                  {rate.from_currency}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {fee.to_country}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {fee.payment_method}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {fee.receiving_method}
+                  {rate.to_currency}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {editingId === fee.id ? (
+                  {editingId === rate.id ? (
                     <input
                       type="number"
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
-                      className="w-24 rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm"
-                      step="0.01"
+                      className="w-32 rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm"
+                      step="0.0001"
                       min="0"
-                      max="100"
                     />
                   ) : (
-                    (fee.fee_percentage * 100).toFixed(2)
+                    rate.rate.toFixed(4)
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Date(fee.updated_at).toLocaleString('fr-FR')}
+                  {new Date(rate.updated_at).toLocaleString('fr-FR')}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  {editingId === fee.id ? (
+                  {editingId === rate.id ? (
                     <div className="flex justify-end space-x-2">
                       <button
-                        onClick={() => handleEdit(fee.id, parseFloat(editValue))}
+                        onClick={() => handleEdit(rate.id, parseFloat(editValue))}
                         className="text-green-600 hover:text-green-900"
                         title="Valider"
                       >
@@ -171,8 +152,8 @@ const TransferFeesManager = () => {
                   ) : (
                     <button
                       onClick={() => {
-                        setEditingId(fee.id);
-                        setEditValue((fee.fee_percentage * 100).toString());
+                        setEditingId(rate.id);
+                        setEditValue(rate.rate.toString());
                       }}
                       className="text-yellow-600 hover:text-yellow-900"
                       title="Modifier"
@@ -190,4 +171,4 @@ const TransferFeesManager = () => {
   );
 };
 
-export default TransferFeesManager;
+export default ExchangeRatesManager;

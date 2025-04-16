@@ -423,7 +423,7 @@ const TransferSimulator = () => {
                 </div>
                 {fromCountry === 'GA' && (
                   <p className="text-red-600 text-sm mb-2">
-                    Attention, tous les transferts <strong>depuis le Gabon</strong> sont limités pour l'instant à 50 000 XAF par utilisateur et par semaine.
+                     Pour l'instant, montant Max est de 50 000 FCFA par utilisateur et par semaine.
                   </p>
                 )}
                 <div className="mt-1 relative rounded-lg shadow-sm">
@@ -432,7 +432,17 @@ const TransferSimulator = () => {
                     name="amount"
                     id="amount"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      const numericValue = Number(newValue);
+                      if (fromCountry === 'GA' && numericValue > 50000) {
+                        setError("Le montant maximum autorisé depuis le Gabon est de 50 000 XAF par semaine.");
+                        return;
+                      } else {
+                        setError(null);
+                      }
+                      setAmount(newValue);
+                    }}
                     className="block w-full pr-12 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 pl-4 py-3 text-lg"
                     placeholder="0,00"
                     min="0"

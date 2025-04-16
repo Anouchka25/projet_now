@@ -8,9 +8,8 @@ import TransferFeesManager from '../components/Admin/TransferFeesManager';
 import PromoCodesManager from '../components/Admin/PromoCodesManager';
 import TransferConditionsManager from '../components/Admin/TransferConditionsManager';
 import StatisticsManager from '../components/Admin/StatisticsManager';
-import TransferRevenue from '../components/Admin/TransferRevenue';
 import Navbar from '../components/Navbar';
-import { Home, Users, DollarSign, Percent, Tag, Settings, Trash2, BarChart, Calendar } from 'lucide-react';
+import { Home, Users, DollarSign, Percent, Tag, Settings, Trash2, BarChart } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Stats {
@@ -24,13 +23,6 @@ interface Stats {
   }[];
 }
 
-interface MonthlyRevenueByDirection {
-  direction: string;
-  total: number;
-  currency: string;
-  count: number;
-}
-
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('transfers');
@@ -38,15 +30,9 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cleanupLoading, setCleanupLoading] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState<string>(
-    new Date().toLocaleString('fr-FR', { month: 'long', year: 'numeric' })
-  );
-  const [monthlyRevenue, setMonthlyRevenue] = useState<MonthlyRevenueByDirection[]>([]);
-  const [totalRevenueEUR, setTotalRevenueEUR] = useState<number>(0);
 
   useEffect(() => {
     fetchStats();
-    fetchMonthlyRevenue();
   }, []);
 
   const fetchStats = async () => {
@@ -99,7 +85,7 @@ const AdminDashboard = () => {
           };
         }
         acc[transfer.direction].count++;
-        acc[transfer.direction].totalAmount += Number(transfer.amount_sent) || 0;
+        acc[transfer.direction].totalAmount += Number(transfer.amount_sent);
         return acc;
       }, {} as Record<string, any>);
 
@@ -108,73 +94,11 @@ const AdminDashboard = () => {
         uniqueBeneficiaryCount: uniqueEmails.size,
         transferStats: Object.values(statsByDirection || {})
       });
-    } catch (err) {
-      console.error('Error fetching stats:', err);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
       setError('Une erreur est survenue lors du chargement des statistiques');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchMonthlyRevenue = async () => {
-    try {
-      // Get current month's first and last day
-      const now = new Date();
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      
-      // Format dates for query
-      const startDate = firstDay.toISOString();
-      const endDate = lastDay.toISOString();
-      
-      // Get completed transfers for current month
-      const { data: transfers, error } = await supabase
-        .from('transfers')
-        .select('fees, kundapay_fees, withdrawal_fees, sender_currency, direction')
-        .eq('status', 'completed')
-        .gte('created_at', startDate)
-        .lte('created_at', endDate);
-      
-      if (error) throw error;
-      
-      // Calculate total fees by direction and currency
-      const feesByDirectionAndCurrency: Record<string, MonthlyRevenueByDirection> = {};
-      let totalEUR = 0;
-      
-      transfers?.forEach(transfer => {
-        const currency = transfer.sender_currency;
-        const direction = transfer.direction || 'Unknown';
-        const key = `${direction}-${currency}`;
-        
-        // Only count KundaPay fees, not withdrawal fees
-        const kundapayFees = Number(transfer.kundapay_fees || (transfer.fees - (transfer.withdrawal_fees || 0))) || 0;
-        
-        if (!feesByDirectionAndCurrency[key]) {
-          feesByDirectionAndCurrency[key] = {
-            direction,
-            total: 0,
-            currency,
-            count: 0
-          };
-        }
-        
-        feesByDirectionAndCurrency[key].total += kundapayFees;
-        feesByDirectionAndCurrency[key].count += 1;
-        
-        // Convert to EUR for total calculation
-        if (currency === 'EUR') {
-          totalEUR += kundapayFees;
-        } else if (currency === 'XAF') {
-          // Convert XAF to EUR (1 EUR = 655.96 XAF)
-          totalEUR += kundapayFees / 655.96;
-        }
-      });
-      
-      setMonthlyRevenue(Object.values(feesByDirectionAndCurrency));
-      setTotalRevenueEUR(totalEUR);
-      
-    } catch (error) {
-      console.error('Error fetching monthly revenue:', error);
     }
   };
 
@@ -200,12 +124,6 @@ const AdminDashboard = () => {
 
         if (testTransfers && testTransfers.length > 0) {
           const transferIds = testTransfers.map(t => t.id);
-
-          // Delete additional fees first
-          await supabase
-            .from('additional_fees')
-            .delete()
-            .in('transfer_id', transferIds);
 
           // Delete notifications first
           await supabase
@@ -257,13 +175,6 @@ const AdminDashboard = () => {
     return directions[direction] || direction;
   };
 
-  // Function to convert XAF to EUR
-  const convertToEUR = (amount: number, currency: string): number => {
-    if (currency === 'EUR') return amount;
-    if (currency === 'XAF') return amount / 655.96; // 1 EUR = 655.96 XAF
-    return amount; // Default case
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -272,6 +183,14 @@ const AdminDashboard = () => {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Administration KundaPay</h1>
           <div className="flex gap-4">
+            <button
+              onClick={() => cleanupTestData()}
+              disabled={cleanupLoading}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+            >
+              <Trash2 className="h-5 w-5 mr-2" />
+              {cleanupLoading ? 'Suppression...' : 'Supprimer données test'}
+            </button>
             <button
               onClick={() => navigate('/')}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
@@ -292,124 +211,37 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Monthly Revenue Card */}
-        <div className="mb-8 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-lg shadow-lg p-6 text-white">
-          <div className="flex items-center mb-4">
-            <Calendar className="h-6 w-6 mr-2" />
-            <h2 className="text-xl font-bold">Revenus du mois de {currentMonth}</h2>
-          </div>
-          
-          {monthlyRevenue.length > 0 ? (
-            <div className="space-y-6">
-              {/* Total for all directions */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-b border-yellow-400 pb-4">
-                <div>
-                  <p className="text-yellow-100 text-sm">Revenus totaux (frais KundaPay uniquement)</p>
-                  <p className="text-3xl font-bold">
-                    {totalRevenueEUR.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} EUR
-                  </p>
-                  {monthlyRevenue.some(item => item.currency === 'XAF') && (
-                    <p className="text-sm text-yellow-100">
-                      {monthlyRevenue
-                        .filter(item => item.currency === 'XAF')
-                        .reduce((sum, item) => sum + item.total, 0)
-                        .toLocaleString('fr-FR')} XAF
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <p className="text-yellow-100 text-sm">Nombre de transferts</p>
-                  <p className="text-3xl font-bold">
-                    {monthlyRevenue.reduce((sum, item) => sum + item.count, 0)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-yellow-100 text-sm">Revenu moyen par transfert</p>
-                  <p className="text-3xl font-bold">
-                    {monthlyRevenue.reduce((sum, item) => sum + item.count, 0) > 0 
-                      ? (totalRevenueEUR / 
-                         monthlyRevenue.reduce((sum, item) => sum + item.count, 0)).toLocaleString('fr-FR', { maximumFractionDigits: 2 })
-                      : '0'} EUR
-                  </p>
-                </div>
-              </div>
-              
-              {/* Breakdown by direction */}
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Détail par direction</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {monthlyRevenue.map((item, index) => (
-                    <div key={index} className="bg-yellow-400 bg-opacity-20 rounded-lg p-4">
-                      <h4 className="font-medium mb-2">{getDirectionLabel(item.direction)}</h4>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-yellow-100">Revenus:</span>
-                        <span className="font-medium">
-                          {item.total.toLocaleString('fr-FR')} {item.currency}
-                          {item.currency === 'XAF' && (
-                            <span className="block text-xs text-yellow-100">
-                              ({(item.total / 655.96).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} EUR)
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-yellow-100">Transferts:</span>
-                        <span className="font-medium">{item.count}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-yellow-100">Aucun revenu pour ce mois</p>
-          )}
-        </div>
-
         {/* Statistiques globales */}
         {!loading && stats && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <div className="bg-white p-6 rounded-lg shadow-sm">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900">Utilisateurs</h3>
-                <Users className="h-8 w-8 text-yellow-500" />
-              </div>
-              <p className="mt-4 text-3xl font-bold text-yellow-600">{stats.userCount}</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Utilisateurs</h3>
+              <p className="text-3xl font-bold text-yellow-600">{stats.userCount}</p>
               <p className="text-sm text-gray-500">expéditeurs enregistrés</p>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-sm">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900">Bénéficiaires uniques</h3>
-                <Users className="h-8 w-8 text-yellow-500" />
-              </div>
-              <p className="mt-4 text-3xl font-bold text-yellow-600">{stats.uniqueBeneficiaryCount}</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Bénéficiaires uniques</h3>
+              <p className="text-3xl font-bold text-yellow-600">{stats.uniqueBeneficiaryCount}</p>
               <p className="text-sm text-gray-500">bénéficiaires distincts</p>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-sm col-span-1 md:col-span-2 lg:col-span-1">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900">Transferts terminés</h3>
-                <BarChart className="h-8 w-8 text-yellow-500" />
-              </div>
-              <div className="mt-4 space-y-3">
-                {stats.transferStats.length > 0 ? (
-                  stats.transferStats.map((stat) => (
-                    <div key={stat.direction} className="flex justify-between items-center">
-                      <span className="text-gray-600">{getDirectionLabel(stat.direction)}</span>
-                      <div className="text-right">
-                        <span className="font-medium text-yellow-600">
-                          {stat.totalAmount.toLocaleString('fr-FR')} {stat.currency}
-                        </span>
-                        <span className="text-gray-500 text-sm block">
-                          ({stat.count} transfert{stat.count > 1 ? 's' : ''})
-                        </span>
-                      </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Transferts terminés</h3>
+              <div className="space-y-3">
+                {stats.transferStats.map((stat) => (
+                  <div key={stat.direction} className="flex justify-between items-center">
+                    <span className="text-gray-600">{getDirectionLabel(stat.direction)}</span>
+                    <div className="text-right">
+                      <span className="font-medium text-yellow-600">
+                        {stat.totalAmount.toLocaleString('fr-FR')} {stat.currency}
+                      </span>
+                      <span className="text-gray-500 text-sm block">
+                        ({stat.count} transfert{stat.count > 1 ? 's' : ''})
+                      </span>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500">Aucun transfert terminé</p>
-                )}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -445,10 +277,6 @@ const AdminDashboard = () => {
               <BarChart className="h-4 w-4 mr-2" />
               Statistiques
             </TabsTrigger>
-            <TabsTrigger value="revenue" className="flex items-center">
-              <DollarSign className="h-4 w-4 mr-2" />
-              Revenus
-            </TabsTrigger>
           </TabsList>
 
           <div className="bg-white rounded-lg shadow-lg p-6">
@@ -478,10 +306,6 @@ const AdminDashboard = () => {
 
             <TabsContent value="statistics">
               <StatisticsManager />
-            </TabsContent>
-
-            <TabsContent value="revenue">
-              <TransferRevenue />
             </TabsContent>
           </div>
         </Tabs>

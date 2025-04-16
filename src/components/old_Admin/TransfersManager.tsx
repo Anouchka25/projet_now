@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Check, X, Eye, Plus, Edit, DollarSign, AlertCircle } from 'lucide-react';
+import { Check, X, Eye, Plus } from 'lucide-react';
 import { sendTransferStatusEmail } from '../../lib/onesignal';
 import CreateTransferModal from './CreateTransferModal';
-import AddExtraFeesModal from './AddExtraFeesModal';
 
 interface Transfer {
   id: string;
@@ -22,7 +21,6 @@ interface Transfer {
   kundapay_fees: number;
   withdrawal_fees: number;
   withdrawal_fees_included: boolean;
-  fees: number;
   user: {
     id: string;
     email: string;
@@ -38,14 +36,6 @@ interface Transfer {
     payment_details: any;
     transfer_id: string;
   }>;
-  additional_fees?: Array<{
-    id: string;
-    amount: number;
-    currency: string;
-    description: string;
-    created_at: string;
-    transfer_id: string;
-  }>;
 }
 
 const TransfersManager = () => {
@@ -55,11 +45,7 @@ const TransfersManager = () => {
   const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showExtraFeesModal, setShowExtraFeesModal] = useState(false);
   const [processingTransfer, setProcessingTransfer] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [directionFilter, setDirectionFilter] = useState<string>('all');
-  const [hasAdditionalFeesFilter, setHasAdditionalFeesFilter] = useState<string>('all');
 
   // Format name with first name capitalized and last name uppercase
   const formatName = (firstName: string = '', lastName: string = '') => {
@@ -74,14 +60,14 @@ const TransfersManager = () => {
 
   useEffect(() => {
     fetchTransfers();
-  }, [statusFilter, directionFilter, hasAdditionalFeesFilter]);
+  }, []);
 
   const fetchTransfers = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      let query = supabase
+      const { data, error } = await supabase
         .from('transfers')
         .select(`
           *,
@@ -90,38 +76,14 @@ const TransfersManager = () => {
           ),
           beneficiaries (
             id, first_name, last_name, email, user_id, payment_details
-          ),
-          additional_fees(
-            id, amount, currency, description, created_at, transfer_id
           )
         `)
         .order('created_at', { ascending: false });
 
-      // Apply status filter if not 'all'
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
-      }
-
-      // Apply direction filter if not 'all'
-      if (directionFilter !== 'all') {
-        query = query.eq('direction', directionFilter);
-      }
-
-      const { data, error } = await query;
-
       if (error) throw error;
       
-      // Filter by additional fees if needed
-      let filteredData = data || [];
-      if (hasAdditionalFeesFilter !== 'all') {
-        filteredData = filteredData.filter(transfer => {
-          const hasAdditionalFees = transfer.additional_fees && transfer.additional_fees.length > 0;
-          return hasAdditionalFeesFilter === 'yes' ? hasAdditionalFees : !hasAdditionalFees;
-        });
-      }
-
-      console.log('Transfers data:', filteredData);
-      setTransfers(filteredData);
+      console.log('Transfers data:', data);
+      setTransfers(data || []);
     } catch (err) {
       console.error('Error fetching transfers:', err);
       setError('Erreur lors du chargement des transferts');
@@ -275,51 +237,6 @@ const TransfersManager = () => {
     return reasons[reason] || reason || 'Non spécifié';
   };
 
-  const getDirectionLabel = (direction: string) => {
-    const directions: Record<string, string> = {
-      'FRANCE_TO_GABON': 'France → Gabon',
-      'GABON_TO_FRANCE': 'Gabon → France',
-      'GABON_TO_CHINA': 'Gabon → Chine',
-      'USA_TO_GABON': 'États-Unis → Gabon',
-      'GABON_TO_USA': 'Gabon → États-Unis',
-      'CANADA_TO_GABON': 'Canada → Gabon',
-      'GABON_TO_CANADA': 'Gabon → Canada',
-      'BELGIUM_TO_GABON': 'Belgique → Gabon',
-      'GABON_TO_BELGIUM': 'Gabon → Belgique',
-      'GERMANY_TO_GABON': 'Allemagne → Gabon',
-      'GABON_TO_GERMANY': 'Gabon → Allemagne'
-    };
-    return directions[direction] || direction;
-  };
-
-  // Calculate total additional fees for a transfer
-  const calculateTotalAdditionalFees = (transfer: Transfer) => {
-    if (!transfer.additional_fees || transfer.additional_fees.length === 0) {
-      return 0;
-    }
-    
-    return transfer.additional_fees.reduce((total, fee) => {
-      // Convert to transfer currency if needed
-      if (fee.currency === transfer.sender_currency) {
-        return total + fee.amount;
-      }
-      
-      // Convert from fee currency to transfer currency
-      let rate = 1;
-      if (fee.currency === 'XAF' && transfer.sender_currency === 'EUR') {
-        rate = 1 / 655.96;
-      } else if (fee.currency === 'EUR' && transfer.sender_currency === 'XAF') {
-        rate = 655.96;
-      } else if (fee.currency === 'USD' && transfer.sender_currency === 'XAF') {
-        rate = 610.35;
-      } else if (fee.currency === 'XAF' && transfer.sender_currency === 'USD') {
-        rate = 1 / 610.35;
-      }
-      
-      return total + (fee.amount * rate);
-    }, 0);
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center p-8">
@@ -347,69 +264,6 @@ const TransfersManager = () => {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="mb-6 bg-white p-4 rounded-lg shadow-sm">
-        <div className="flex flex-wrap gap-4">
-          <div>
-            <label htmlFor="statusFilter" className="block text-sm font-medium text-gray-700 mb-1">
-              Statut
-            </label>
-            <select
-              id="statusFilter"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm rounded-md"
-            >
-              <option value="all">Tous les statuts</option>
-              <option value="pending">En attente</option>
-              <option value="completed">Terminé</option>
-              <option value="cancelled">Annulé</option>
-            </select>
-          </div>
-          
-          <div>
-            <label htmlFor="directionFilter" className="block text-sm font-medium text-gray-700 mb-1">
-              Direction
-            </label>
-            <select
-              id="directionFilter"
-              value={directionFilter}
-              onChange={(e) => setDirectionFilter(e.target.value)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm rounded-md"
-            >
-              <option value="all">Toutes les directions</option>
-              <option value="FRANCE_TO_GABON">France → Gabon</option>
-              <option value="GABON_TO_FRANCE">Gabon → France</option>
-              <option value="GABON_TO_CHINA">Gabon → Chine</option>
-              <option value="USA_TO_GABON">USA → Gabon</option>
-              <option value="GABON_TO_USA">Gabon → USA</option>
-              <option value="CANADA_TO_GABON">Canada → Gabon</option>
-              <option value="GABON_TO_CANADA">Gabon → Canada</option>
-              <option value="BELGIUM_TO_GABON">Belgique → Gabon</option>
-              <option value="GABON_TO_BELGIUM">Gabon → Belgique</option>
-              <option value="GERMANY_TO_GABON">Allemagne → Gabon</option>
-              <option value="GABON_TO_GERMANY">Gabon → Allemagne</option>
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="hasAdditionalFeesFilter" className="block text-sm font-medium text-gray-700 mb-1">
-              Frais annexes
-            </label>
-            <select
-              id="hasAdditionalFeesFilter"
-              value={hasAdditionalFeesFilter}
-              onChange={(e) => setHasAdditionalFeesFilter(e.target.value)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm rounded-md"
-            >
-              <option value="all">Tous les transferts</option>
-              <option value="yes">Avec frais annexes</option>
-              <option value="no">Sans frais annexes</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
       <div className="overflow-x-auto">
         <div className="inline-block min-w-full align-middle">
           <div className="overflow-hidden shadow-md rounded-lg">
@@ -432,9 +286,6 @@ const TransfersManager = () => {
                     Montant
                   </th>
                   <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Frais
-                  </th>
-                  <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Statut
                   </th>
                   <th scope="col" className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -447,12 +298,6 @@ const TransfersManager = () => {
                   <tr key={transfer.id} className="hover:bg-gray-50">
                     <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {transfer.reference}
-                      {transfer.additional_fees && transfer.additional_fees.length > 0 && (
-                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          <AlertCircle className="h-3 w-3 mr-1" />
-                          Frais annexes
-                        </span>
-                      )}
                     </td>
                     <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(transfer.created_at).toLocaleDateString('fr-FR')}
@@ -467,19 +312,6 @@ const TransfersManager = () => {
                     </td>
                     <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
                       {transfer.amount_sent.toLocaleString('fr-FR')} {transfer.sender_currency}
-                    </td>
-                    <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {(transfer.kundapay_fees || transfer.fees).toLocaleString('fr-FR')} {transfer.sender_currency}
-                      {transfer.withdrawal_fees > 0 && (
-                        <span className="text-xs text-gray-500 block">
-                          +{transfer.withdrawal_fees.toLocaleString('fr-FR')} (retrait)
-                        </span>
-                      )}
-                      {transfer.additional_fees && transfer.additional_fees.length > 0 && (
-                        <span className="text-xs text-blue-600 font-medium block">
-                          +{calculateTotalAdditionalFees(transfer).toLocaleString('fr-FR')} (annexes)
-                        </span>
-                      )}
                     </td>
                     <td className="px-3 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -537,30 +369,11 @@ const TransfersManager = () => {
                           </>
                         )}
                         <button
-                          onClick={() => {
-                            setSelectedTransfer(transfer);
-                            setShowExtraFeesModal(false);
-                          }}
+                          onClick={() => setSelectedTransfer(transfer)}
                           className="p-1 text-yellow-600 hover:text-yellow-900 rounded-full hover:bg-yellow-50"
                           title="Voir les détails"
                         >
                           <Eye className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedTransfer(transfer);
-                            setShowExtraFeesModal(true);
-                          }}
-                          className={`p-1 rounded-full hover:bg-blue-50 ${
-                            transfer.additional_fees && transfer.additional_fees.length > 0 
-                              ? 'text-blue-600 hover:text-blue-900' 
-                              : 'text-gray-400 hover:text-gray-600'
-                          }`}
-                          title={transfer.additional_fees && transfer.additional_fees.length > 0 
-                            ? "Modifier les frais annexes" 
-                            : "Ajouter des frais annexes"}
-                        >
-                          <DollarSign className="h-5 w-5" />
                         </button>
                       </div>
                     </td>
@@ -577,15 +390,7 @@ const TransfersManager = () => {
         {transfers.map((transfer) => (
           <div key={transfer.id} className="bg-white rounded-lg shadow-md p-4">
             <div className="flex justify-between items-center mb-2">
-              <div className="flex items-center">
-                <span className="font-medium text-gray-900">{transfer.reference}</span>
-                {transfer.additional_fees && transfer.additional_fees.length > 0 && (
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    Frais annexes
-                  </span>
-                )}
-              </div>
+              <span className="font-medium text-gray-900">{transfer.reference}</span>
               <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                 transfer.status === 'completed' ? 'bg-green-100 text-green-800' :
                 transfer.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -603,7 +408,7 @@ const TransfersManager = () => {
               {new Date(transfer.created_at).toLocaleDateString('fr-FR')}
             </div>
             
-            <div className="grid grid-cols-2 gap-2 mb-2">
+            <div className="grid grid-cols-2 gap-2 mb-3">
               <div>
                 <div className="text-xs text-gray-500">Expéditeur</div>
                 <div className="text-sm font-medium">
@@ -625,23 +430,6 @@ const TransfersManager = () => {
               <div className="text-xs text-gray-500">Montant</div>
               <div className="text-sm font-medium">
                 {transfer.amount_sent.toLocaleString('fr-FR')} {transfer.sender_currency}
-              </div>
-            </div>
-            
-            <div className="mb-3">
-              <div className="text-xs text-gray-500">Frais</div>
-              <div className="text-sm font-medium">
-                {(transfer.kundapay_fees || transfer.fees).toLocaleString('fr-FR')} {transfer.sender_currency}
-                {transfer.withdrawal_fees > 0 && (
-                  <span className="text-xs text-gray-500 block">
-                    +{transfer.withdrawal_fees.toLocaleString('fr-FR')} (retrait)
-                  </span>
-                )}
-                {transfer.additional_fees && transfer.additional_fees.length > 0 && (
-                  <span className="text-xs text-blue-600 font-medium block">
-                    +{calculateTotalAdditionalFees(transfer).toLocaleString('fr-FR')} (annexes)
-                  </span>
-                )}
               </div>
             </div>
             
@@ -687,30 +475,11 @@ const TransfersManager = () => {
                 </>
               )}
               <button
-                onClick={() => {
-                  setSelectedTransfer(transfer);
-                  setShowExtraFeesModal(false);
-                }}
+                onClick={() => setSelectedTransfer(transfer)}
                 className="p-2 text-yellow-600 hover:text-yellow-900 rounded-full hover:bg-yellow-50"
                 title="Voir les détails"
               >
                 <Eye className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedTransfer(transfer);
-                  setShowExtraFeesModal(true);
-                }}
-                className={`p-2 rounded-full hover:bg-blue-50 ${
-                  transfer.additional_fees && transfer.additional_fees.length > 0 
-                    ? 'text-blue-600 hover:text-blue-900' 
-                    : 'text-gray-400 hover:text-gray-600'
-                }`}
-                title={transfer.additional_fees && transfer.additional_fees.length > 0 
-                  ? "Modifier les frais annexes" 
-                  : "Ajouter des frais annexes"}
-              >
-                <DollarSign className="h-5 w-5" />
               </button>
             </div>
           </div>
@@ -718,7 +487,7 @@ const TransfersManager = () => {
       </div>
 
       {/* Modal des détails */}
-      {selectedTransfer && !showExtraFeesModal && (
+      {selectedTransfer && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-medium text-gray-900 mb-4">
@@ -726,7 +495,7 @@ const TransfersManager = () => {
             </h3>
             
             <div className="space-y-6">
-              {/*  Informations de l'expéditeur */}
+              {/* Informations de l'expéditeur */}
               <div>
                 <h4 className="text-sm font-medium text-gray-500 mb-2">Expéditeur</h4>
                 <div className="bg-gray-50 rounded-lg p-4">
@@ -780,7 +549,7 @@ const TransfersManager = () => {
                       )}
                     </>
                   ) : (
-                    <p className="text-gray-500">Aucune information de bénéficiaire disponible</p>
+                    <p className="text-gray-400 italic">Aucun bénéficiaire trouvé</p>
                   )}
                 </div>
               </div>
@@ -820,24 +589,6 @@ const TransfersManager = () => {
                             <span className="text-yellow-600 ml-2">Non inclus (à la charge du bénéficiaire)</span>
                           )}
                         </p>
-                      </div>
-                    )}
-                    
-                    {/* Frais annexes */}
-                    {selectedTransfer.additional_fees && selectedTransfer.additional_fees.length > 0 && (
-                      <div className="mt-2">
-                        <p className="font-medium">Frais annexes :</p>
-                        <ul className="list-disc pl-5 mt-1 space-y-1">
-                          {selectedTransfer.additional_fees.map((fee) => (
-                            <li key={fee.id} className="text-sm">
-                              {fee.amount.toLocaleString('fr-FR')} {fee.currency}
-                              {fee.description && <span className="text-gray-500 ml-1">- {fee.description}</span>}
-                              <span className="text-xs text-gray-500 ml-1">
-                                ({new Date(fee.created_at).toLocaleDateString('fr-FR')})
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
                       </div>
                     )}
                   </div>
@@ -904,19 +655,6 @@ const TransfersManager = () => {
         onClose={() => setShowCreateModal(false)}
         onTransferCreated={fetchTransfers}
       />
-
-      {/* Modal d'ajout de frais annexes */}
-      {selectedTransfer && showExtraFeesModal && (
-        <AddExtraFeesModal
-          isOpen={showExtraFeesModal}
-          onClose={() => {
-            setShowExtraFeesModal(false);
-            setSelectedTransfer(null);
-          }}
-          transfer={selectedTransfer}
-          onFeesAdded={fetchTransfers}
-        />
-      )}
     </div>
   );
 };

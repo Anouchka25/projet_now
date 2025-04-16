@@ -121,6 +121,13 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             </div>
           </div>
         );
+        case 'CARD':
+          return (
+            <p className="text-sm text-gray-700">
+              Redirection en cours vers le paiement sécurisé...
+            </p>
+          );
+                
       default:
         return (
           <p className="text-sm sm:text-base text-gray-700">
@@ -200,6 +207,33 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         }]);
 
       if (beneficiaryError) throw beneficiaryError;
+
+      if (transferDetails.paymentMethod === 'CARD') {
+        const response = await fetch('/api/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: Math.round(transferDetails.amountSent * 100), // en centimes
+            currency: transferDetails.senderCurrency.toLowerCase(),
+            reference: newReference
+          }),
+        });
+      
+        const text = await response.text();
+        try {
+          const result = JSON.parse(text);
+          if (result.redirect_url) {
+            window.location.href = result.redirect_url;
+            return; // on arrête là
+          } else {
+            throw new Error("Pas de lien de redirection retourné par Checkout");
+          }
+        } catch (e) {
+          console.error("❌ Réponse non valide :", text);
+          throw e;
+        }
+      }
+      
 
       // Show confirmation page
       setShowConfirmation(true);

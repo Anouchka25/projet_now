@@ -2,66 +2,76 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Edit, Check, X } from 'lucide-react';
 
-interface TransferFee {
+interface TransferCondition {
   id: string;
-  from_country: string;
-  to_country: string;
-  payment_method: string;
-  receiving_method: string;
-  fee_percentage: number;
+  name: string;
+  value: number;
+  currency: string;
+  description: string;
   updated_at: string;
 }
 
-const TransferFeesManager = () => {
-  const [fees, setFees] = useState<TransferFee[]>([]);
+const TransferConditionsManager = () => {
+  const [conditions, setConditions] = useState<TransferCondition[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [updateSuccess, setUpdateSuccess] = useState<boolean>(false);
 
   useEffect(() => {
-    fetchFees();
+    fetchConditions();
   }, []);
 
-  const fetchFees = async () => {
+  const fetchConditions = async () => {
     try {
       setError(null);
       const { data, error } = await supabase
-        .from('transfer_fees')
+        .from('transfer_conditions')
         .select('*')
-        .order('from_country');
+        .order('name');
 
       if (error) throw error;
-      setFees(data);
+      setConditions(data);
     } catch (err) {
-      console.error('Error fetching fees:', err);
-      setError('Erreur lors du chargement des frais');
+      console.error('Error fetching conditions:', err);
+      setError('Erreur lors du chargement des conditions de transfert');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEdit = async (id: string, newFee: number) => {
+  const handleEdit = async (id: string, newValue: number) => {
     try {
       setError(null);
-      if (newFee < 0 || newFee > 100) {
-        throw new Error('Le pourcentage doit être entre 0 et 100');
+      setUpdateSuccess(false);
+      
+      // Vérifier que la valeur est un nombre valide
+      if (isNaN(newValue) || newValue <= 0) {
+        throw new Error('La valeur doit être un nombre positif');
       }
-
+      
       const { error } = await supabase
-        .from('transfer_fees')
+        .from('transfer_conditions')
         .update({ 
-          fee_percentage: newFee / 100,
+          value: newValue,
           updated_at: new Date().toISOString()
         })
         .eq('id', id);
 
       if (error) throw error;
+      
       setEditingId(null);
-      await fetchFees();
+      setUpdateSuccess(true);
+      
+      // Attendre un peu avant de rafraîchir pour montrer le message de succès
+      setTimeout(() => {
+        fetchConditions();
+        setUpdateSuccess(false);
+      }, 1500);
     } catch (err) {
-      console.error('Error updating fee:', err);
-      setError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour des frais');
+      console.error('Error updating condition:', err);
+      setError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour de la condition');
     }
   };
 
@@ -75,7 +85,7 @@ const TransferFeesManager = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Frais de transfert</h2>
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">Conditions de transfert</h2>
 
       {error && (
         <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
@@ -90,24 +100,34 @@ const TransferFeesManager = () => {
         </div>
       )}
 
+      {updateSuccess && (
+        <div className="mb-4 bg-green-50 border-l-4 border-green-400 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <Check className="h-5 w-5 text-green-400" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-green-700">Condition mise à jour avec succès</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                De
+                Nom
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Vers
+                Valeur
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Moyen de paiement
+                Devise
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Moyen de réception
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Frais (%)
+                Description
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Dernière mise à jour
@@ -118,43 +138,41 @@ const TransferFeesManager = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {fees.map((fee) => (
-              <tr key={fee.id}>
+            {conditions.map((condition) => (
+              <tr key={condition.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {fee.from_country}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {fee.to_country}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {fee.payment_method}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {fee.receiving_method}
+                  {condition.name === 'MAX_AMOUNT_FROM_GABON' ? 'Maximum depuis le Gabon' :
+                   condition.name === 'MAX_AMOUNT_TO_GABON' ? 'Maximum vers le Gabon' :
+                   condition.name}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {editingId === fee.id ? (
+                  {editingId === condition.id ? (
                     <input
                       type="number"
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
-                      className="w-24 rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm"
-                      step="0.01"
+                      className="w-32 rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm"
+                      step="1"
                       min="0"
-                      max="100"
                     />
                   ) : (
-                    (fee.fee_percentage * 100).toFixed(2)
+                    condition.value.toLocaleString('fr-FR')
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Date(fee.updated_at).toLocaleString('fr-FR')}
+                  {condition.currency}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-500">
+                  {condition.description}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {new Date(condition.updated_at).toLocaleString('fr-FR')}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  {editingId === fee.id ? (
+                  {editingId === condition.id ? (
                     <div className="flex justify-end space-x-2">
                       <button
-                        onClick={() => handleEdit(fee.id, parseFloat(editValue))}
+                        onClick={() => handleEdit(condition.id, parseFloat(editValue))}
                         className="text-green-600 hover:text-green-900"
                         title="Valider"
                       >
@@ -171,8 +189,8 @@ const TransferFeesManager = () => {
                   ) : (
                     <button
                       onClick={() => {
-                        setEditingId(fee.id);
-                        setEditValue((fee.fee_percentage * 100).toString());
+                        setEditingId(condition.id);
+                        setEditValue(condition.value.toString());
                       }}
                       className="text-yellow-600 hover:text-yellow-900"
                       title="Modifier"
@@ -190,4 +208,4 @@ const TransferFeesManager = () => {
   );
 };
 
-export default TransferFeesManager;
+export default TransferConditionsManager;
