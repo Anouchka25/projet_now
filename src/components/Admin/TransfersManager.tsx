@@ -135,7 +135,7 @@ const TransfersManager = () => {
       setProcessingTransfer(transferId);
       setError(null);
 
-      onst response = await fetch('/api/execute-transfer', {
+      const response = await fetch('/api/execute-transfer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

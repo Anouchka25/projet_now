@@ -45,7 +45,7 @@ const PAYMENT_METHODS = {
   },
   'FR': {
     'GA': [
-     // { value: 'CARD', label: 'Carte Bancaire', icon: '/cb.png' },
+      //{ value: 'CARD', label: 'Carte Bancaire', icon: '/cb.png' },
       { value: 'WERO', label: 'Wero ou PayLib', icon: '/wero.png' },
       { value: 'PAYPAL', label: 'PayPal', icon: '/paypal.png' },
       { value: 'BANK_TRANSFER', label: 'Virement bancaire', icon: '/virement-bancaire.jpg' }
@@ -423,7 +423,7 @@ const TransferSimulator = () => {
                 </div>
                 {fromCountry === 'GA' && (
                   <p className="text-red-600 text-sm mb-2">
-                     Pour l'instant, montant Max est de 50 000 FCFA par utilisateur et par semaine.
+                     Pour l'instant, montant Max est de 10 000 FCFA par utilisateur et par semaine.
                   </p>
                 )}
                 <div className="mt-1 relative rounded-lg shadow-sm">
@@ -435,8 +435,8 @@ const TransferSimulator = () => {
                     onChange={(e) => {
                       const newValue = e.target.value;
                       const numericValue = Number(newValue);
-                      if (fromCountry === 'GA' && numericValue > 50000) {
-                        setError("Le montant maximum autorisé depuis le Gabon est de 50 000 XAF par semaine.");
+                      if (fromCountry === 'GA' && numericValue > 10000) {
+                        setError("Le montant maximum autorisé depuis le Gabon est de 10 000 XAF par semaine.");
                         return;
                       } else {
                         setError(null);

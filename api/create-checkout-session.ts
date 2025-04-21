@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ✅ Retourne l’URL de redirection
     return res.status(200).json({
-      redirect_url: session?._links?.redirect?.href,
+      redirect_url: 'https://checkout.com/fake-session-for-test',
     });
   } catch (error) {
     console.error('❌ Erreur Checkout.com :', error);
