@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './Auth/AuthProvider';
-import { ArrowRight, ArrowUpDown, Info } from 'lucide-react';
+import { ArrowRight, Info } from 'lucide-react';
 import { calculateTransferDetails, formatCurrency } from '../lib/utils';
 import { validate_promo_code } from '../lib/supabase';
 import { COUNTRIES, type CountryCode } from '../lib/constants';
@@ -162,8 +162,8 @@ const getDefaultReceivingMethod = (fromCountry: CountryCode, toCountry: CountryC
   return methods[0].value;
 };
 
-const getDirectionFromCountries = (fromCountry: CountryCode, toCountry: CountryCode): string => {
-  const countryNameMap: Record<CountryCode, string> = {
+const getDirectionFromCountries = (fromCountry: string, toCountry: string): string => {
+  const countryNameMap: Record<string, string> = {
     'GA': 'GABON',
     'FR': 'FRANCE',
     'BE': 'BELGIUM',
@@ -179,38 +179,53 @@ const getDirectionFromCountries = (fromCountry: CountryCode, toCountry: CountryC
 const TransferSimulator = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [amount, setAmount] = useState('');
+  const [sendAmount, setSendAmount] = useState('');
+  const [receiveAmount, setReceiveAmount] = useState('');
   const [fromCountry, setFromCountry] = useState<CountryCode>('FR');
   const [toCountry, setToCountry] = useState<CountryCode>('GA');
   const [paymentMethod, setPaymentMethod] = useState(getDefaultPaymentMethod('FR', 'GA'));
   const [receivingMethod, setReceivingMethod] = useState(getDefaultReceivingMethod('FR', 'GA'));
-  const [calculation, setCalculation] = useState(null);
+  const [calculation, setCalculation] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isReceiveAmount, setIsReceiveAmount] = useState<boolean>(false);
+  const [activeField, setActiveField] = useState<'send' | 'receive'>('send');
   const [promoCode, setPromoCode] = useState('');
   const [promoCodeValid, setPromoCodeValid] = useState(false);
   const [promoCodeMessage, setPromoCodeMessage] = useState('');
   const [suggestedPromoCode, setSuggestedPromoCode] = useState<string | null>(null);
   const [includeWithdrawalFees, setIncludeWithdrawalFees] = useState(false);
   const [showFeeDetails, setShowFeeDetails] = useState(false);
+  const [lastCalculatedField, setLastCalculatedField] = useState<'send' | 'receive'>('send');
+  
 
   // Update payment and receiving methods when countries change
   useEffect(() => {
-
-   // Vérifie que `toCountry` est bien une destination valide pour `fromCountry`
-  const validDestinations = TRANSFER_ROUTES[fromCountry] || [];
-  if (!validDestinations.includes(toCountry)) {
-    setToCountry(validDestinations[0] || 'GA'); // Sélectionne le premier pays valide
-  }
+    // Vérifie que `toCountry` est bien une destination valide pour `fromCountry`
+    const validDestinations = TRANSFER_ROUTES[fromCountry] || [];
+    if (!validDestinations.includes(toCountry)) {
+      setToCountry(validDestinations[0] || 'GA'); // Sélectionne le premier pays valide
+    }
     
     setPaymentMethod(getDefaultPaymentMethod(fromCountry, toCountry));
     setReceivingMethod(getDefaultReceivingMethod(fromCountry, toCountry));
     setIncludeWithdrawalFees(false); // Reset withdrawal fees checkbox when countries change
+    
+    // Reset amounts when countries change
+    setSendAmount('');
+    setReceiveAmount('');
+    setCalculation(null);
   }, [fromCountry, toCountry]);
 
+  // Calculate based on the active field
   useEffect(() => {
-    const calculateAmount = async () => {
+    const calculateAmounts = async () => {
+      // Don't calculate if both fields are empty
+      if ((!sendAmount || sendAmount === '0') && (!receiveAmount || receiveAmount === '0')) {
+        setCalculation(null);
+        return;
+      }
+
+      const amount = activeField === 'send' ? sendAmount : receiveAmount;
       if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
         setCalculation(null);
         setError(null);
@@ -220,10 +235,11 @@ const TransferSimulator = () => {
 
       setLoading(true);
       setError(null);
+      setLastCalculatedField(activeField);
 
       try {
         // Check if we should suggest a promo code
-        if (toCountry === 'GA' && !isReceiveAmount) {
+        if (toCountry === 'GA' && activeField === 'send') {
           const amountNum = Number(amount);
           if (amountNum >= 1000) {
             setSuggestedPromoCode('WELCOME75');
@@ -242,12 +258,20 @@ const TransferSimulator = () => {
           direction,
           paymentMethod,
           receivingMethod,
-          isReceiveAmount,
+          activeField === 'receive', // isReceiveAmount
           promoCodeValid ? promoCode : undefined,
           includeWithdrawalFees
         );
         
         setCalculation(result);
+        
+        // Update the other field based on calculation
+        if (activeField === 'send') {
+          setReceiveAmount(result.amountReceived.toFixed(2));
+        } else {
+          setSendAmount(result.amountSent.toFixed(2));
+        }
+        
         setError(null);
       } catch (err) {
         setCalculation(null);
@@ -261,9 +285,9 @@ const TransferSimulator = () => {
       }
     };
 
-    const timeoutId = setTimeout(calculateAmount, 500);
+    const timeoutId = setTimeout(calculateAmounts, 500);
     return () => clearTimeout(timeoutId);
-  }, [amount, fromCountry, toCountry, paymentMethod, receivingMethod, isReceiveAmount, promoCode, promoCodeValid, includeWithdrawalFees]);
+  }, [sendAmount, receiveAmount, fromCountry, toCountry, paymentMethod, receivingMethod, activeField, promoCode, promoCodeValid, includeWithdrawalFees]);
 
   const handlePromoCodeChange = async (code: string) => {
     setPromoCode(code);
@@ -329,26 +353,53 @@ const TransferSimulator = () => {
   };
 
   // Calculer le total des frais de retrait en FCFA
-  const getTotalWithdrawalFeesXAF = (withdrawalFeesDetails) => {
+  const getTotalWithdrawalFeesXAF = (withdrawalFeesDetails: any[]) => {
     if (!withdrawalFeesDetails || withdrawalFeesDetails.length === 0) return 0;
     return withdrawalFeesDetails.reduce((total, detail) => total + detail.fee, 0);
   };
 
+  // Handle send amount change
+  const handleSendAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    
+    // Validate for Gabon transfers
+    if (fromCountry === 'GA') {
+      const numericValue = Number(newValue);
+      if (numericValue > 50000) {
+        setError("Le montant maximum autorisé depuis le Gabon est de 10 000 XAF par semaine.");
+        return;
+      }
+    }
+    
+    setActiveField('send');
+    setSendAmount(newValue);
+    setError(null);
+  };
+
+  // Gère la saisie du montant à recevoir
+const handleReceiveAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  setActiveField('receive');
+  setReceiveAmount(e.target.value);
+  setError(null);
+};
+
+
   return (
     <section className="py-16 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg p-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+        <div className="w-full mx-auto px-2 sm:px-4">
+          <div className="bg-white rounded-lg shadow-lg px-2 py-4">
             <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
               Effectuer un transfert d'argent
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Country Selection */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">*/}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="fromCountry" className="block text-sm font-medium text-gray-700 mb-2">
-                    Pays d'envoi
+                    Expéditeur
                   </label>
                   <div className="relative">
                     <select
@@ -377,7 +428,7 @@ const TransferSimulator = () => {
 
                 <div>
                   <label htmlFor="toCountry" className="block text-sm font-medium text-gray-700 mb-2">
-                    Pays de réception
+                    Destination
                   </label>
                   <div className="relative">
                     <select
@@ -401,61 +452,79 @@ const TransferSimulator = () => {
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
-                    {isReceiveAmount ? "Montant à recevoir" : "Montant à envoyer"}
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsReceiveAmount(!isReceiveAmount);
-                      setAmount('');
-                      setCalculation(null);
-                    }}
-                    className="inline-flex items-center text-sm text-yellow-600 hover:text-yellow-700"
-                  >
-                    <ArrowUpDown className="h-4 w-4 mr-1" />
-                    Inverser le calcul
-                  </button>
                 </div>
-                {fromCountry === 'GA' && (
-                  <p className="text-red-600 text-sm mb-2">
-                     Pour l'instant, montant Max est de 10 000 FCFA par utilisateur et par semaine.
-                  </p>
-                )}
-                <div className="mt-1 relative rounded-lg shadow-sm">
+              {/*</div>*/}
+
+              {/* Dual Amount Inputs */}
+              <div className="grid grid-cols-2 gap-2">
+                {/* Send Amount */}
+                <div className="min-w-0">
+                  <label htmlFor="sendAmount" className="block text-sm font-medium text-gray-700 mb-2">
+                    Montant à envoyer ({COUNTRIES[fromCountry].currency})
+                  </label>
+                  {fromCountry === 'GA' && (
+                    <p className="text-red-600 text-sm mb-2">
+                      Pour l'instant, montant Max est de 50 000 FCFA par utilisateur et par semaine.
+                    </p>
+                  )}
+                  <div className="mt-1 relative rounded-lg shadow-sm">
                   <input
                     type="number"
-                    name="amount"
-                    id="amount"
-                    value={amount}
-                    onChange={(e) => {
-                      const newValue = e.target.value;
-                      const numericValue = Number(newValue);
-                      if (fromCountry === 'GA' && numericValue > 10000) {
-                        setError("Le montant maximum autorisé depuis le Gabon est de 10 000 XAF par semaine.");
-                        return;
-                      } else {
-                        setError(null);
-                      }
-                      setAmount(newValue);
-                    }}
-                    className="block w-full pr-12 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 pl-4 py-3 text-lg"
+                    name="sendAmount"
+                    id="sendAmount"
+                    value={sendAmount}
+                    onChange={handleSendAmountChange}
+                    onFocus={() => setActiveField('send')}
                     placeholder="0,00"
                     min="0"
                     step="0.01"
-                    required
+                    className="w-full min-w-0 px-2 border-2 rounded-lg py-2 text-base font-bold focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
                   />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">
-                      {COUNTRIES[isReceiveAmount ? toCountry : fromCountry].currency}
-                    </span>
+
+                  </div>
+                </div>
+
+                {/* Receive Amount */}
+                <div className="min-w-0">
+                  <label htmlFor="receiveAmount" className="block text-sm font-medium text-gray-700 mb-2">
+                    Montant à recevoir ({COUNTRIES[toCountry].currency})
+                  </label>
+                  <div className="mt-1 relative rounded-lg shadow-sm">
+                  <input
+                    type="number"
+                    name="receiveAmount"
+                    id="receiveAmount"
+                    value={receiveAmount}
+                    onChange={handleReceiveAmountChange}
+                    onFocus={() => setActiveField('receive')}
+                    placeholder="0,00"
+                    min="0"
+                    step="0.01"
+                    className="w-full min-w-0 px-2 border-2 rounded-lg py-2 text-base font-bold focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                  />
+
                   </div>
                 </div>
               </div>
+
+               {/* Withdrawal fees checkbox */}
+               {showWithdrawalFees() && (
+                <div className="flex items-center">
+                  <input
+                    id="withdrawalFees"
+                    type="checkbox"
+                    checked={includeWithdrawalFees}
+                    onChange={(e) => setIncludeWithdrawalFees(e.target.checked)}
+                    className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="withdrawalFees" className="ml-2 block text-sm text-gray-900">
+                    {getWithdrawalFeeLabel()}
+                  </label>
+                  <span className="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-0.5 rounded-full ml-2">
+                    Nouveauté
+                  </span>
+                </div>
+              )}
 
               <div>
                 <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700 mb-2">
@@ -503,7 +572,7 @@ const TransferSimulator = () => {
                 </div>
               </div>
 
-              {/* Withdrawal fees checkbox */}
+              {/* Withdrawal fees checkbox 
               {showWithdrawalFees() && (
                 <div className="flex items-center">
                   <input
@@ -516,11 +585,11 @@ const TransferSimulator = () => {
                   <label htmlFor="withdrawalFees" className="ml-2 block text-sm text-gray-900">
                     {getWithdrawalFeeLabel()}
                   </label>
-                  <span className="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-0.5 rounded-full">
-      Nouveauté
-    </span>
+                  <span className="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-0.5 rounded-full ml-2">
+                    Nouveauté
+                  </span>
                 </div>
-              )}
+              )}  */}
 
               {/* Suggestion de code promo */}
               {suggestedPromoCode && (
@@ -646,7 +715,6 @@ const TransferSimulator = () => {
               </button>
             </form>
           </div>
-
           
         </div>
       </div>
