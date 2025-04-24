@@ -365,8 +365,8 @@ const TransferSimulator = () => {
     // Validate for Gabon transfers
     if (fromCountry === 'GA') {
       const numericValue = Number(newValue);
-      if (numericValue > 50000) {
-        setError("Le montant maximum autorisé depuis le Gabon est de 10 000 XAF par semaine.");
+      if (numericValue > 150000) {
+        setError("Le montant maximum autorisé depuis le Gabon est de 150 000 XAF par semaine.");
         return;
       }
     }
@@ -464,7 +464,7 @@ const handleReceiveAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                   </label>
                   {fromCountry === 'GA' && (
                     <p className="text-red-600 text-sm mb-2">
-                      Pour l'instant, montant Max est de 50 000 FCFA par utilisateur et par semaine.
+                      Pour l'instant, montant Max est de 150 000 FCFA par utilisateur et par semaine.
                     </p>
                   )}
                   <div className="mt-1 relative rounded-lg shadow-sm">
