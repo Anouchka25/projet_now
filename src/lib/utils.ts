@@ -13,6 +13,15 @@ export function formatCurrency(amount: number, currency: string): string {
     return roundedAmount.toLocaleString('fr-FR');
   }
 
+  if (currency === 'BTC') {
+    // Format BTC with 8 decimal places
+    return amount.toLocaleString('fr-FR', {
+      minimumFractionDigits: 8,
+      maximumFractionDigits: 8
+    });
+  }
+
+
   // For EUR, USD, CNY, CAD - always show 2 decimal places
   return amount.toLocaleString('fr-FR', {
     minimumFractionDigits: 2,

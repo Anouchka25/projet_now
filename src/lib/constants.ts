@@ -1,8 +1,8 @@
 // Currency codes
 export type CountryCode = 'GA' | 'FR' | 'CN' | 'US' | 'CA' | 'BE' | 'DE';
-export type CurrencyCode = 'XAF' | 'EUR' | 'CNY' | 'USD' | 'CAD';
-export type PaymentMethod = 'AIRTEL_MONEY' | 'MOOV_MONEY' | 'CASH' | 'BANK_TRANSFER' | 'ALIPAY' | 'CARD' | 'ACH' | 'PAYPAL' | 'WERO';
-export type ReceivingMethod = 'AIRTEL_MONEY' | 'MOOV_MONEY' | 'CASH' | 'BANK_TRANSFER' | 'ALIPAY' | 'CARD' | 'ACH' | 'VISA_DIRECT' | 'MASTERCARD_SEND' | 'WERO';
+export type CurrencyCode = 'XAF' | 'EUR' | 'CNY' | 'USD' | 'CAD' | 'BTC';
+export type PaymentMethod = 'AIRTEL_MONEY' | 'MOOV_MONEY' | 'CASH' | 'BANK_TRANSFER' | 'ALIPAY' | 'CARD' | 'ACH' | 'PAYPAL' | 'WERO' | 'BITCOIN';
+export type ReceivingMethod = 'AIRTEL_MONEY' | 'MOOV_MONEY' | 'CASH' | 'BANK_TRANSFER' | 'ALIPAY' | 'CARD' | 'ACH' | 'VISA_DIRECT' | 'MASTERCARD_SEND' | 'WERO' | 'BITCOIN';
 export type TransferDirection = 'GABON_TO_CHINA' | 'FRANCE_TO_GABON' | 'GABON_TO_FRANCE' | 'USA_TO_GABON' | 'GABON_TO_USA' | 'CANADA_TO_GABON' | 'GABON_TO_CANADA' | 'BELGIUM_TO_GABON' | 'GABON_TO_BELGIUM' | 'GERMANY_TO_GABON' | 'GABON_TO_GERMANY';
 
 // Country information with proper flag URLs
@@ -54,7 +54,8 @@ export const PAYMENT_METHODS: Record<PaymentMethod, string> = {
   ALIPAY: 'Alipay',
   CARD: 'Carte bancaire',
   ACH: 'Virement ACH',
-  PAYPAL: 'PayPal'
+  PAYPAL: 'PayPal',
+  BITCOIN: 'Bitcoin'
 };
 
 // Receiving method names
@@ -68,5 +69,6 @@ export const RECEIVING_METHODS: Record<ReceivingMethod, string> = {
   ACH: 'Dépôt ACH',
   VISA_DIRECT: 'Visa Direct',
   MASTERCARD_SEND: 'Mastercard Send',
-  WERO: 'Wero'
+  WERO: 'Wero',
+  BITCOIN: 'Bitcoin'
 };

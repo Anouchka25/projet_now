@@ -26,6 +26,7 @@ export interface RecipientData {
   phone: string;
   alipayId?: string;
   weroName?: string;
+  bitcoinAddress?: string;
   address?: {
     street: string;
     city: string;
@@ -84,6 +85,7 @@ const RecipientForm: React.FC<RecipientFormProps> = ({ transferDetails, onBack, 
     phone: '',
     alipayId: '',
     weroName: '',
+    bitcoinAddress: '',
     address: {
       street: '',
       city: '',
@@ -186,6 +188,7 @@ const RecipientForm: React.FC<RecipientFormProps> = ({ transferDetails, onBack, 
         phone: beneficiary.payment_details?.phone || '',
         alipayId: beneficiary.payment_details?.alipayId || '',
         weroName: beneficiary.payment_details?.weroName || '',
+        bitcoinAddress: beneficiary.payment_details?.bitcoinAddress || '',
         address: beneficiary.payment_details?.address || formData.address,
         bankDetails: beneficiary.payment_details?.bankDetails || formData.bankDetails,
         cardDetails: beneficiary.payment_details?.cardDetails || formData.cardDetails,
@@ -290,6 +293,15 @@ const RecipientForm: React.FC<RecipientFormProps> = ({ transferDetails, onBack, 
       }
     }
 
+       // Validation for Bitcoin address
+       if (transferDetails.receivingMethod === 'BITCOIN') {
+        if (!formData.bitcoinAddress?.trim()) {
+          newErrors.bitcoinAddress = 'L\'adresse Bitcoin est requise';
+        } else if (!/^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,39}$/.test(formData.bitcoinAddress)) {
+          newErrors.bitcoinAddress = 'Format d\'adresse Bitcoin invalide';
+        }
+      }
+
     // Validation for Alipay ID
     if (transferDetails.receivingMethod === 'ALIPAY') {
       if (!formData.alipayId?.trim()) {
@@ -325,6 +337,10 @@ const RecipientForm: React.FC<RecipientFormProps> = ({ transferDetails, onBack, 
 
   const needsAlipayId = () => {
     return transferDetails.receivingMethod === 'ALIPAY';
+  };
+
+  const needsBitcoinAddress = () => {
+    return transferDetails.receivingMethod === 'BITCOIN';
   };
 
   const needsWeroDetails = () => {
@@ -570,6 +586,31 @@ const RecipientForm: React.FC<RecipientFormProps> = ({ transferDetails, onBack, 
                   {errors.weroName && (
                     <p className="mt-1 text-xs text-red-600">{errors.weroName}</p>
                   )}
+                </div>
+              )}
+
+              {needsBitcoinAddress() && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Adresse Bitcoin
+                  </label>
+                  <input
+                    type="text"
+                    name="bitcoinAddress"
+                    value={formData.bitcoinAddress}
+                    onChange={handleChange}
+                    className={`mt-1 block w-full rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm border-2 ${
+                      errors.bitcoinAddress ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    placeholder="bc1..."
+                    required
+                  />
+                  {errors.bitcoinAddress && (
+                    <p className="mt-1 text-xs text-red-600">{errors.bitcoinAddress}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">
+                    Assurez-vous que l'adresse est correcte. Les transactions Bitcoin sont irréversibles.
+                  </p>
                 </div>
               )}
 

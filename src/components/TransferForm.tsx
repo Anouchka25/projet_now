@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { generateTransferReference } from '../lib/utils';
 import RecipientForm from './RecipientForm';
 import PaymentForm from './PaymentForm';
+import BitcoinPaymentForm from './BitcoinPaymentForm';
 import type { RecipientData } from './RecipientForm';
 
 const TransferForm = () => {
@@ -217,7 +218,6 @@ const TransferForm = () => {
       setLoading(false);
       setIsSubmitting(false); // Reset submission flag
     } */
-
   };
 
   const handleComplete = () => {
@@ -291,25 +291,38 @@ const TransferForm = () => {
           </div>
         </div>
       ) : (
-        <PaymentForm
-          transferDetails={transferDetails}
-          recipientDetails={recipientData!}
-          onBack={handleBack}
-          onSubmit={handlePaymentSubmit}
-          onComplete={handleComplete}
-          transferComplete={transferComplete}
-        />
-      )}
+        <div>
+          {transferDetails.paymentMethod === 'BITCOIN' || transferDetails.receivingMethod === 'BITCOIN' ? (
+            <BitcoinPaymentForm
+              transferDetails={transferDetails}
+              recipientDetails={recipientData!}
+              onBack={handleBack}
+              onSubmit={handlePaymentSubmit}
+              onComplete={handleComplete}
+              transferComplete={transferComplete}
+            />
+          ) : (
+            <PaymentForm
+              transferDetails={transferDetails}
+              recipientDetails={recipientData!}
+              onBack={handleBack}
+              onSubmit={handlePaymentSubmit}
+              onComplete={handleComplete}
+              transferComplete={transferComplete}
+            />
+          )}
 
-      {error && !error.includes('conditions générales') && (
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-          <div className="bg-red-50 border-l-4 border-red-400 p-4">
-            <div className="flex">
-              <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
+          {error && !error.includes('conditions générales') && (
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+              <div className="bg-red-50 border-l-4 border-red-400 p-4">
+                <div className="flex">
+                  <div className="ml-3">
+                    <p className="text-sm text-red-700">{error}</p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

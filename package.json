@@ -13,6 +13,7 @@
     "bubblewrap:build": "bubblewrap build"
   },
   "dependencies": {
+    "@binance/connector": "^3.0.0",
     "@emailjs/browser": "^3.12.1",
     "@radix-ui/react-tabs": "^1.0.4",
     "@supabase/supabase-js": "^2.39.7",
@@ -21,6 +22,7 @@
     "framer-motion": "^12.4.7",
     "lucide-react": "^0.323.0",
     "onfido-sdk-ui": "^14.44.0",
+    "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-number-format": "^5.4.4",
@@ -32,6 +34,7 @@
     "@bubblewrap/cli": "^1.21.0",
     "@tailwindcss/typography": "^0.5.10",
     "@types/node": "^20.11.17",
+    "@types/qrcode.react": "^1.0.5",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@typescript-eslint/eslint-plugin": "^6.14.0",

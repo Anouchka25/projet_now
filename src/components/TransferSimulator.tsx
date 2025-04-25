@@ -48,21 +48,24 @@ const PAYMENT_METHODS = {
       //{ value: 'CARD', label: 'Carte Bancaire', icon: '/cb.png' },
       { value: 'WERO', label: 'Wero ou PayLib', icon: '/wero.png' },
       { value: 'PAYPAL', label: 'PayPal', icon: '/paypal.png' },
-      { value: 'BANK_TRANSFER', label: 'Virement bancaire', icon: '/virement-bancaire.jpg' }
+      { value: 'BANK_TRANSFER', label: 'Virement bancaire', icon: '/virement-bancaire.jpg' },
+      { value: 'BITCOIN', label: 'Bitcoin', icon: '/bitcoin.png' }
     ]
   },
   'BE': {
     'GA': [
       { value: 'BANK_TRANSFER', label: 'Virement bancaire', icon: '/virement-bancaire.jpg' },
       { value: 'WERO', label: 'Wero ou PayLib', icon: '/wero.png' },
-      { value: 'PAYPAL', label: 'PayPal', icon: '/paypal.png' }
+      { value: 'PAYPAL', label: 'PayPal', icon: '/paypal.png' },
+      { value: 'BITCOIN', label: 'Bitcoin', icon: '/bitcoin.png' }
     ]
   },
   'DE': {
     'GA': [
       { value: 'BANK_TRANSFER', label: 'Virement bancaire', icon: '/virement-bancaire.jpg' },
       { value: 'WERO', label: 'Wero ou PayLib', icon: '/wero.png' },
-      { value: 'PAYPAL', label: 'PayPal', icon: '/paypal.png' }
+      { value: 'PAYPAL', label: 'PayPal', icon: '/paypal.png' },
+      { value: 'BITCOIN', label: 'Bitcoin', icon: '/bitcoin.png' }
     ]
   },
   'US': {
@@ -70,7 +73,8 @@ const PAYMENT_METHODS = {
       { value: 'PAYPAL', label: 'PayPal', icon: '/paypal.png' },
       { value: 'ACH', label: 'Virement ACH', icon: '/virement-bancaire.jpg' },
       { value: 'VISA_DIRECT', label: 'Visa Direct', icon: '/cb.png' },
-      { value: 'MASTERCARD_SEND', label: 'Mastercard Send', icon: '/cb.png' }
+      { value: 'MASTERCARD_SEND', label: 'Mastercard Send', icon: '/cb.png' },
+      { value: 'BITCOIN', label: 'Bitcoin', icon: '/bitcoin.png' }
     ]
   },
   'CA': {
@@ -78,7 +82,8 @@ const PAYMENT_METHODS = {
       { value: 'PAYPAL', label: 'PayPal', icon: '/paypal.png' },
       { value: 'INTERAC', label: 'Virement Interac', icon: '/virement-bancaire.jpg' },
       { value: 'VISA_DIRECT', label: 'Visa Direct', icon: '/cb.png' },
-      { value: 'MASTERCARD_SEND', label: 'Mastercard Send', icon: '/cb.png' }
+      { value: 'MASTERCARD_SEND', label: 'Mastercard Send', icon: '/cb.png' },
+      { value: 'BITCOIN', label: 'Bitcoin', icon: '/bitcoin.png' }
     ]
   }
 };
@@ -91,40 +96,47 @@ const RECEIVING_METHODS = {
     ],
     'BE': [
       { value: 'AIRTEL_MONEY', label: 'Airtel Money', icon: '/airtel-money.png' },
-      { value: 'MOOV_MONEY', label: 'Moov Money', icon: '/moov-money.png' }
+      { value: 'MOOV_MONEY', label: 'Moov Money', icon: '/moov-money.png' },
+      { value: 'BITCOIN', label: 'Bitcoin', icon: '/bitcoin.png' }
     ],
     'DE': [
       { value: 'AIRTEL_MONEY', label: 'Airtel Money', icon: '/airtel-money.png' },
-      { value: 'MOOV_MONEY', label: 'Moov Money', icon: '/moov-money.png' }
+      { value: 'MOOV_MONEY', label: 'Moov Money', icon: '/moov-money.png' },
+      { value: 'BITCOIN', label: 'Bitcoin', icon: '/bitcoin.png' }
     ],
     'US': [
       { value: 'AIRTEL_MONEY', label: 'Airtel Money', icon: '/airtel-money.png' },
-      { value: 'MOOV_MONEY', label: 'Moov Money', icon: '/moov-money.png' }
+      { value: 'MOOV_MONEY', label: 'Moov Money', icon: '/moov-money.png' },
+      { value: 'BITCOIN', label: 'Bitcoin', icon: '/bitcoin.png' }
     ],
     'CA': [
       { value: 'AIRTEL_MONEY', label: 'Airtel Money', icon: '/airtel-money.png' },
-      { value: 'MOOV_MONEY', label: 'Moov Money', icon: '/moov-money.png' }
+      { value: 'MOOV_MONEY', label: 'Moov Money', icon: '/moov-money.png' },
+      { value: 'BITCOIN', label: 'Bitcoin', icon: '/bitcoin.png' }
     ]
   },
   'FR': {
     'GA': [
       { value: 'WERO', label: 'Wero ou PayLib', icon: '/wero.png' },
       { value: 'BANK_TRANSFER', label: 'Virement bancaire', icon: '/virement-bancaire.jpg' },
-      { value: 'PAYPAL', label: 'PayPal', icon: '/paypal.png' }
+      { value: 'PAYPAL', label: 'PayPal', icon: '/paypal.png' },
+      { value: 'BITCOIN', label: 'Bitcoin', icon: '/bitcoin.png' }
     ]
   },
   'BE': {
     'GA': [
       { value: 'BANK_TRANSFER', label: 'Virement bancaire', icon: '/virement-bancaire.jpg' },
       { value: 'WERO', label: 'Wero ou PayLib', icon: '/wero.png' },
-      { value: 'PAYPAL', label: 'PayPal', icon: '/paypal.png' }
+      { value: 'PAYPAL', label: 'PayPal', icon: '/paypal.png' },
+      { value: 'BITCOIN', label: 'Bitcoin', icon: '/bitcoin.png' }
     ]
   },
   'DE': {
     'GA': [
       { value: 'BANK_TRANSFER', label: 'Virement bancaire', icon: '/virement-bancaire.jpg' },
       { value: 'WERO', label: 'Wero ou PayLib', icon: '/wero.png' },
-      { value: 'PAYPAL', label: 'PayPal', icon: '/paypal.png' }
+      { value: 'PAYPAL', label: 'PayPal', icon: '/paypal.png' },
+      { value: 'BITCOIN', label: 'Bitcoin', icon: '/bitcoin.png' }
     ]
   },
   'CN': {
@@ -137,7 +149,8 @@ const RECEIVING_METHODS = {
       { value: 'PAYPAL', label: 'PayPal', icon: '/paypal.png' },
       { value: 'ACH', label: 'Virement ACH', icon: '/virement-bancaire.jpg' },
       { value: 'VISA_DIRECT', label: 'Visa Direct', icon: '/cb.png' },
-      { value: 'MASTERCARD_SEND', label: 'Mastercard Send', icon: '/cb.png' }
+      { value: 'MASTERCARD_SEND', label: 'Mastercard Send', icon: '/cb.png' },
+      { value: 'BITCOIN', label: 'Bitcoin', icon: '/bitcoin.png' }
     ]
   },
   'CA': {
@@ -145,7 +158,8 @@ const RECEIVING_METHODS = {
       { value: 'PAYPAL', label: 'PayPal', icon: '/paypal.png' },
       { value: 'INTERAC', label: 'Virement Interac', icon: '/virement-bancaire.jpg' },
       { value: 'VISA_DIRECT', label: 'Visa Direct', icon: '/cb.png' },
-      { value: 'MASTERCARD_SEND', label: 'Mastercard Send', icon: '/cb.png' }
+      { value: 'MASTERCARD_SEND', label: 'Mastercard Send', icon: '/cb.png' },
+      { value: 'BITCOIN', label: 'Bitcoin', icon: '/bitcoin.png' }
     ]
   }
 };

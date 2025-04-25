@@ -29,6 +29,10 @@ const paymentMethods = [
   {
     name: "Alipay",
     logo: "/1000133611.6795ed4372fe81.90775491.png"
+  },
+  {
+    name: "Crypto",
+    logo: "/crypto.png"
   }
 ];
 
