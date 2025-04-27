@@ -12,6 +12,7 @@ export function formatCurrency(amount: number, currency: string): string {
     const roundedAmount = Math.round(amount / 5) * 5;
     return roundedAmount.toLocaleString('fr-FR');
   }
+  
 
   if (currency === 'BTC') {
     // Format BTC with 8 decimal places
